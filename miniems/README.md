@@ -48,7 +48,7 @@ bevor er greift — außer bei sicherheitsrelevanten Übergängen, die sofort wi
 
 Repository in Home Assistant hinzufügen und das Add-on installieren:
 
-[![Add-on-Repository in Home Assistant hinzufügen](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FGuidoJeuken-6512%2FminiEMS)
+[![Add-on-Repository in Home Assistant hinzufügen](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fgrexha%2FminiEMS)
 
 Die Oberfläche ist danach über Ingress erreichbar (Seitenleiste, Eintrag
 „miniEMS"), mit den Reitern Dashboard, Einstellungen, Log, `config.json`,

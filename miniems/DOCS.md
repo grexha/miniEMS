@@ -5,7 +5,7 @@ Stromtarif.
 
 Diese Seite führt durch Einrichtung und Betrieb. Die vollständige technische
 Referenz — Berechnungswege, Sensorliste, Architektur — steht in der
-Projektdokumentation unter [`docs/`](https://github.com/GuidoJeuken-6512/miniEMS/tree/main/docs)
+Projektdokumentation unter [`docs/`](https://github.com/grexha/miniEMS/tree/main/docs)
 (deutsch, englische Spiegelung unter `docs/en/`).
 
 ## Was das Add-on tut
@@ -134,14 +134,14 @@ Sensoren im Namensraum `sensor.miniems_*` — nutzbar in Dashboards, im
 Energie-Dashboard und in Automationen.
 
 Die vollständige Liste steht in der
-[HA-Sensor-Referenz](https://github.com/GuidoJeuken-6512/miniEMS/blob/main/docs/technical/sensors.md).
+[HA-Sensor-Referenz](https://github.com/grexha/miniEMS/blob/main/docs/technical/sensors.md).
 
 ## Weiterführend
 
-- [Kosten & Einsparungen](https://github.com/GuidoJeuken-6512/miniEMS/blob/main/docs/user/costs.md) — jeder Wert mit Rechenweg
-- [Berechnungen](https://github.com/GuidoJeuken-6512/miniEMS/blob/main/docs/technical/calculations.md) — die Formeln dahinter
-- [Konfigurationsreferenz](https://github.com/GuidoJeuken-6512/miniEMS/blob/main/docs/user/configuration.md) — alle Felder
-- [CHANGELOG](https://github.com/GuidoJeuken-6512/miniEMS/blob/main/miniems/CHANGELOG.md) — Änderungen je Version
+- [Kosten & Einsparungen](https://github.com/grexha/miniEMS/blob/main/docs/user/costs.md) — jeder Wert mit Rechenweg
+- [Berechnungen](https://github.com/grexha/miniEMS/blob/main/docs/technical/calculations.md) — die Formeln dahinter
+- [Konfigurationsreferenz](https://github.com/grexha/miniEMS/blob/main/docs/user/configuration.md) — alle Felder
+- [CHANGELOG](https://github.com/grexha/miniEMS/blob/main/miniems/CHANGELOG.md) — Änderungen je Version
 
 ---
 

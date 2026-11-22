@@ -200,13 +200,13 @@ Same day, a second new requirement: starting a local add-on failed with
 
 ```
 ERROR [supervisor.apps.app] Could not pull image to update app local_miniems:
-  Can't install ghcr.io/guidojeuken-6512/amd64-addon-miniems:3.7.0: [404] manifest unknown
+  Can't install ghcr.io/grexha/amd64-addon-miniems:3.7.0: [404] manifest unknown
 WARNING [supervisor.jobs] Background job app_manager_update failed: An unknown error occurred with app local_miniems
 ```
 
 **Root cause**
 
-Since v3.6.0, `miniems/config.yaml` has `image: "ghcr.io/guidojeuken-6512/{arch}-addon-miniems"`
+Since v3.6.0, `miniems/config.yaml` has `image: "ghcr.io/grexha/{arch}-addon-miniems"`
 (installation as an add-on repository). With an `image` key the supervisor **pulls** the
 add-on instead of building it from the `Dockerfile`, also for the local copy in the
 devcontainer. An unreleased version has no image on ghcr.io yet → 404.

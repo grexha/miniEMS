@@ -14,7 +14,7 @@ permissions:
 env:
   ARCHITECTURES: '["amd64", "aarch64"]'
   IMAGE_NAME: addon-miniems
-  REGISTRY_PREFIX: ghcr.io/guidojeuken-6512
+  REGISTRY_PREFIX: ghcr.io/grexha
 
 jobs:
   init:

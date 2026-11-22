@@ -54,4 +54,4 @@ revision_date: 2026-08-14
 ## Source Code
 
 Das Projekt ist auf GitHub gehostet:
-[github.com/GuidoJeuken-6512/miniEMS](https://github.com/GuidoJeuken-6512/miniEMS)
+[github.com/grexha/miniEMS](https://github.com/grexha/miniEMS)

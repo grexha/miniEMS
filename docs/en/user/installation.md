@@ -18,10 +18,10 @@ miniEMS consists of two parts that must both be installed:
 miniEMS is distributed as a Home Assistant add-on repository. Nothing needs to be copied.
 
 1. Use the **"Add repository"** button, which opens your HA instance directly:
-   [![Add repository](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FGuidoJeuken-6512%2FminiEMS)
+   [![Add repository](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fgrexha%2FminiEMS)
 
    Or manually: **Settings → Add-ons → Add-on Store → ⋮ → Repositories** and add
-   `https://github.com/GuidoJeuken-6512/miniEMS`.
+   `https://github.com/grexha/miniEMS`.
 2. **miniEMS** appears in the add-on store. Open it and click **Install**.
    HA downloads a ready-made image; nothing is built on your device.
 3. Click **Start**. The add-on will launch on port 8080 (ingress).

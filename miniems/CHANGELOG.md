@@ -517,9 +517,9 @@ Integration geladen wird.
 ### Changed
 
 - **Installation als Add-on-Repository.** miniEMS wird jetzt über das GitHub-Repository
-  `https://github.com/GuidoJeuken-6512/miniEMS` in Home Assistant installiert, ohne den
+  `https://github.com/grexha/miniEMS` in Home Assistant installiert, ohne den
   Ordner `miniems/` von Hand zu kopieren. Home Assistant lädt ein fertiges Image von
-  ghcr.io (`ghcr.io/guidojeuken-6512/{arch}-addon-miniems`), statt auf dem Gerät zu bauen.
+  ghcr.io (`ghcr.io/grexha/{arch}-addon-miniems`), statt auf dem Gerät zu bauen.
 - **Nur noch aarch64 und amd64.** 32-Bit-Architekturen (armhf, armv7, i386) entfallen,
   da Home Assistant sie nicht mehr unterstützt.
 - **CI:** Builder und Lint laufen auf `main` und auf Pull Requests nach `main`. Der Builder
