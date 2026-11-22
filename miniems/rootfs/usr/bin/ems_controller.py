@@ -153,6 +153,16 @@ class EMSController(PhaseBMixin, PhaseCMixin):
         # A6: battery day plan – shadow mode unless battery_plan_enabled.
         self._battery_plan: BatteryPlan | None = None
         self._battery_plan_status = "not computed"
+        # Inputs the current plan was computed from: a new live price or a new
+        # tariff calendar makes it stale at once, not up to 15 min later.
+        self._battery_plan_price: float | None = None
+        self._battery_plan_curve_key: tuple | None = None
+        # Live price of the last tick and when it last changed: a plan decision
+        # right after a price change skips the dwell time. Separate from
+        # _last_price, which the event log's price_change entry owns.
+        self._plan_last_price: float | None = None
+        self._price_changed_at: datetime | None = None
+        self._mode_changed_at: datetime | None = None
         self._shadow_logged_slot: datetime | None = None
         # A7: learned battery values and forecast corrections, refreshed hourly.
         self._learned_battery: LearnedBattery | None = None
@@ -268,6 +278,7 @@ class EMSController(PhaseBMixin, PhaseCMixin):
         await self._update_hot_water(now, pv_w, grid_w, price, bat_kwh_use, bat_kwh_free)
         await self._update_bridge_plan(pv_w, price, bat_kwh_free, bat_kwh_use, now)
         await self._update_energy_value(now, price, pv_w, bat_kwh_use, bat_kwh_free)
+        self._track_price_change(now, price)
         await self._update_battery_plan(now, price, pv_w, bat_kwh_use, bat_kwh_free)
         # C2: active overrides (EV override goes to the EV controller).
         await self._update_phase_c_pre(now)
@@ -1320,17 +1331,31 @@ class EMSController(PhaseBMixin, PhaseCMixin):
         bat_kwh_use: float | None,
         bat_kwh_free: float | None,
     ) -> None:
-        """Recompute the plan every 15 min and at every slot boundary.
+        """Recompute the plan every 15 min, at every slot boundary, and as soon
+        as the live price or the tariff calendar changes.
+
+        The price triggers matter at tariff boundaries: the price sensor
+        switches up to a minute after the boundary, so the recompute at the
+        slot boundary still sees the old price for slot 0 (22.11.2026, 06:00:
+        the plan kept charging at the 27.4 ct it no longer was, the battery
+        stood still until 06:20). With a market tariff the calendar trigger
+        also picks up tomorrow's day-ahead prices the moment they arrive.
 
         Always computed when the inputs exist (shadow mode); it decides only
         with battery_plan_enabled. Every missing input → no plan, status says why.
         """
         cfg = self._cfg
         plan = self._battery_plan
+        curve = self._price_curve()
+        curve_key = curve.fingerprint() if curve is not None else None
         if (plan is not None and plan.first is not None and now < plan.first.end
-                and (now - plan.computed_at).total_seconds() < self._PLAN_RECOMPUTE_SEC):
+                and (now - plan.computed_at).total_seconds() < self._PLAN_RECOMPUTE_SEC
+                and not self._price_differs(price, self._battery_plan_price)
+                and curve_key == self._battery_plan_curve_key):
             return
         self._battery_plan = None
+        self._battery_plan_price = price
+        self._battery_plan_curve_key = curve_key
         if bat_kwh_use is None or bat_kwh_free is None:
             self._battery_plan_status = "soc unavailable"
             return
@@ -1364,6 +1389,34 @@ class EMSController(PhaseBMixin, PhaseCMixin):
         if self._battery_plan.reason:
             self._battery_plan_status = self._battery_plan.reason
 
+    @staticmethod
+    def _price_differs(a: float | None, b: float | None) -> bool:
+        if a is None or b is None:
+            return a is not b
+        return abs(a - b) > 1e-6
+
+    def _track_price_change(self, now: datetime, price: float | None) -> None:
+        """Remember when the live price last changed (not at the first tick)."""
+        if (price is not None and self._plan_last_price is not None
+                and self._price_differs(price, self._plan_last_price)):
+            self._price_changed_at = now
+        if price is not None:
+            self._plan_last_price = price
+
+    def _price_changed_recently(self, now: datetime) -> bool:
+        """Did the live price change within the last mode_dwell_sec?
+
+        A plan decision in that window follows a tariff boundary – a known,
+        discrete event, not sensor noise the dwell time exists to filter.
+        Waiting it out would run the old window's action at the new price.
+        Only the first mode change after the price change skips it: a PV
+        surplus right at the threshold must not flip the mode every tick.
+        """
+        at = self._price_changed_at
+        if at is None or not 0 <= (now - at).total_seconds() < self._cfg.mode_dwell_sec:
+            return False
+        return self._mode_changed_at is None or self._mode_changed_at < at
+
     def _plan_step(self, now: datetime):
         """Slot 0 of a fresh plan that is allowed to decide, or None."""
         plan = self._battery_plan
@@ -1380,19 +1433,25 @@ class EMSController(PhaseBMixin, PhaseCMixin):
         if step is None:
             return None
         surplus = surplus_w is not None and surplus_w > self._cfg.pv_surplus_threshold_w
+        # Right after a price change the plan reacts to the new tariff window
+        # – that change takes effect now, not after the dwell time.
+        urgent = self._price_changed_recently(now)
         if step.action is Action.CHARGE and step.grid_charge_kwh > PLAN_STOP_BELOW_KWH:
             return ModeDecision(EMSMode.GRID_CHARGING,
                                 f"battery plan: charge {step.grid_charge_kwh:.1f} kWh "
-                                f"until {step.end.strftime('%H:%M')}")
+                                f"until {step.end.strftime('%H:%M')}", urgent=urgent)
         if step.action in (Action.HOLD, Action.CHARGE):
             if surplus:
-                return ModeDecision(EMSMode.PV_CHARGING, "battery plan: hold, pv charges")
-            return ModeDecision(EMSMode.HOLD_FOR_PEAK, "battery plan: hold for later")
+                return ModeDecision(EMSMode.PV_CHARGING, "battery plan: hold, pv charges",
+                                    urgent=urgent)
+            return ModeDecision(EMSMode.HOLD_FOR_PEAK, "battery plan: hold for later",
+                                urgent=urgent)
         if step.action is Action.EXPORT and surplus:
-            return ModeDecision(EMSMode.EXPORT_SURPLUS, "battery plan: export now, charge later")
+            return ModeDecision(EMSMode.EXPORT_SURPLUS, "battery plan: export now, charge later",
+                                urgent=urgent)
         if surplus:
-            return ModeDecision(EMSMode.PV_CHARGING, "battery plan: self-use")
-        return ModeDecision(EMSMode.IDLE, "battery plan: self-use")
+            return ModeDecision(EMSMode.PV_CHARGING, "battery plan: self-use", urgent=urgent)
+        return ModeDecision(EMSMode.IDLE, "battery plan: self-use", urgent=urgent)
 
     def _log_plan_shadow(self, now: datetime) -> None:
         """Shadow mode: log once per slot where plan and decision differ."""
@@ -2200,6 +2259,7 @@ class EMSController(PhaseBMixin, PhaseCMixin):
         if decision.urgent or cfg.mode_dwell_sec <= 0:
             self._pending = None
             self._mode_reason = decision.reason
+            self._mode_changed_at = now
             _LOGGER.info("Mode %s → %s (%s, immediate)",
                          self._mode.value, decision.mode.value, decision.reason)
             return decision.mode
@@ -2216,6 +2276,7 @@ class EMSController(PhaseBMixin, PhaseCMixin):
 
         self._pending = None
         self._mode_reason = decision.reason
+        self._mode_changed_at = now
         _LOGGER.info("Mode %s → %s (%s, stable for %.0fs)",
                      self._mode.value, decision.mode.value, decision.reason, waited)
         return decision.mode

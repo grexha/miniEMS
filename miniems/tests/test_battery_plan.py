@@ -163,22 +163,124 @@ class TestController:
 
     @pytest.mark.asyncio
     async def test_update_builds_shadow_plan(self, make_config, fake_ws):
-        from test_energy_value import FakeForecaster
-        from test_price_curve import _octopus_timeslots
-        ctrl = make_controller(make_config, fake_ws, battery_voltage_entity="sensor.v")
-        fake_ws.values["sensor.v"] = 50.0
-        ctrl._forecaster = FakeForecaster(kwh_per_hour=0.8)
-        fake_ws.attributes[ctrl._cfg.electricity_price_entity] = _octopus_timeslots()
-
-        class Solcast:
-            def pv_slots(self, scenario, weight):
-                start = datetime(2026, 11, 16, 0, tzinfo=TZ)
-                return {start + timedelta(minutes=30 * i):
-                        (start + timedelta(minutes=30 * (i + 1)), 0.0) for i in range(96)}
-
-        ctrl._solcast = Solcast()
-        ctrl._solcast_data_stale = lambda: False
+        ctrl = _planning_ctrl(make_config, fake_ws)
         now = datetime(2026, 11, 16, 13, 5, tzinfo=TZ)
         await ctrl._update_battery_plan(now, L, None, bat_kwh_use=2.0, bat_kwh_free=6.0)
         assert ctrl._battery_plan is not None and ctrl._battery_plan.steps
         assert ctrl._battery_plan_dict()["status"] == "shadow"
+
+
+def _planning_ctrl(make_config, fake_ws, **cfg):
+    """Controller with everything _update_battery_plan needs: Octopus ToU
+    calendar, flat load model, a night-time (0 kWh) Solcast forecast."""
+    from test_energy_value import FakeForecaster
+    from test_price_curve import _octopus_timeslots
+    ctrl = make_controller(make_config, fake_ws, battery_voltage_entity="sensor.v", **cfg)
+    fake_ws.values["sensor.v"] = 50.0
+    ctrl._forecaster = FakeForecaster(kwh_per_hour=0.8)
+    fake_ws.attributes[ctrl._cfg.electricity_price_entity] = _octopus_timeslots()
+
+    class Solcast:
+        def pv_slots(self, scenario, weight):
+            start = datetime(2026, 11, 16, 0, tzinfo=TZ)
+            return {start + timedelta(minutes=30 * i):
+                    (start + timedelta(minutes=30 * (i + 1)), 0.0) for i in range(96)}
+
+    ctrl._solcast = Solcast()
+    ctrl._solcast_data_stale = lambda: False
+    return ctrl
+
+
+class TestPriceTriggers:
+    """22.11.2026, 06:00: the price sensor switched to STANDARD ~50 s after the
+    boundary. The slot-boundary recompute still saw NIEDRIG for slot 0, kept
+    charging, and the next recompute came 15 min later – plus 5 min dwell, the
+    battery stood still until 06:20 while the house ran on 34.4 ct grid power."""
+
+    @pytest.mark.asyncio
+    async def test_price_change_recomputes_plan(self, make_config, fake_ws):
+        ctrl = _planning_ctrl(make_config, fake_ws)
+        t0 = datetime(2026, 11, 16, 6, 0, 20, tzinfo=TZ)
+        await ctrl._update_battery_plan(t0, L, None, bat_kwh_use=2.0, bat_kwh_free=6.0)
+        stale = ctrl._battery_plan
+        assert stale.first.rate_eur_kwh == pytest.approx(L)   # the stale live price
+
+        t1 = t0 + timedelta(seconds=30)
+        await ctrl._update_battery_plan(t1, S, None, bat_kwh_use=2.0, bat_kwh_free=6.0)
+        assert ctrl._battery_plan is not stale
+        assert ctrl._battery_plan.first.rate_eur_kwh == pytest.approx(S)
+
+    @pytest.mark.asyncio
+    async def test_unchanged_inputs_keep_plan(self, make_config, fake_ws):
+        ctrl = _planning_ctrl(make_config, fake_ws)
+        t0 = datetime(2026, 11, 16, 7, 0, 20, tzinfo=TZ)
+        await ctrl._update_battery_plan(t0, S, None, bat_kwh_use=2.0, bat_kwh_free=6.0)
+        plan = ctrl._battery_plan
+        await ctrl._update_battery_plan(t0 + timedelta(minutes=5), S, None,
+                                        bat_kwh_use=2.0, bat_kwh_free=6.0)
+        assert ctrl._battery_plan is plan
+
+    @pytest.mark.asyncio
+    async def test_new_tariff_calendar_recomputes_plan(self, make_config, fake_ws):
+        """Market tariff: tomorrow's day-ahead prices arrive mid-afternoon."""
+        ctrl = _planning_ctrl(make_config, fake_ws)
+        t0 = datetime(2026, 11, 16, 7, 0, 20, tzinfo=TZ)
+        await ctrl._update_battery_plan(t0, S, None, bat_kwh_use=2.0, bat_kwh_free=6.0)
+        plan = ctrl._battery_plan
+        attrs = fake_ws.attributes[ctrl._cfg.electricity_price_entity]
+        attrs["timeslots"][2]["rate"] = "45.0000"          # HOCH changes
+        await ctrl._update_battery_plan(t0 + timedelta(minutes=1), S, None,
+                                        bat_kwh_use=2.0, bat_kwh_free=6.0)
+        assert ctrl._battery_plan is not plan
+
+    def _ctrl_in(self, make_config, fake_ws, mode, action, now, kwh=0.0):
+        ctrl = make_controller(make_config, fake_ws, battery_plan_enabled=True,
+                               mode_dwell_sec=300)
+        ctrl._mode = mode
+        ctrl._battery_plan = BatteryPlan(computed_at=now, style="careful",
+                                         steps=[_step(action, now, kwh)])
+        return ctrl
+
+    def _mode(self, ctrl, now, price):
+        return ctrl._determine_mode(0, 1800, 64.0, price, 5.0, now)
+
+    def test_plan_change_after_price_change_skips_dwell(self, make_config, fake_ws):
+        now = datetime(2026, 11, 16, 6, 1, 20, tzinfo=TZ)
+        ctrl = self._ctrl_in(make_config, fake_ws, EMSMode.GRID_CHARGING, Action.AUTO, now)
+        ctrl._track_price_change(now - timedelta(seconds=60), L)
+        ctrl._track_price_change(now - timedelta(seconds=30), S)   # boundary passed
+        assert self._mode(ctrl, now, S) is EMSMode.IDLE
+
+    def test_plan_change_without_price_change_waits(self, make_config, fake_ws):
+        now = datetime(2026, 11, 16, 7, 30, 20, tzinfo=TZ)
+        ctrl = self._ctrl_in(make_config, fake_ws, EMSMode.GRID_CHARGING, Action.AUTO, now)
+        ctrl._track_price_change(now - timedelta(seconds=60), S)
+        ctrl._track_price_change(now - timedelta(seconds=30), S)
+        assert self._mode(ctrl, now, S) is EMSMode.GRID_CHARGING   # pending
+
+    def test_first_tick_is_no_price_change(self, make_config, fake_ws):
+        """After a restart the first price is not a tariff boundary."""
+        now = datetime(2026, 11, 16, 7, 30, 20, tzinfo=TZ)
+        ctrl = self._ctrl_in(make_config, fake_ws, EMSMode.GRID_CHARGING, Action.AUTO, now)
+        ctrl._track_price_change(now, S)
+        assert not ctrl._price_changed_recently(now)
+
+    def test_only_first_change_after_price_change_skips_dwell(self, make_config, fake_ws):
+        """PV surplus at the threshold must not flip the mode every tick."""
+        now = datetime(2026, 11, 16, 12, 0, 50, tzinfo=TZ)
+        ctrl = self._ctrl_in(make_config, fake_ws, EMSMode.IDLE, Action.CHARGE, now, kwh=2.0)
+        ctrl._track_price_change(now - timedelta(seconds=30), S)
+        ctrl._track_price_change(now, L)
+        ctrl._mode = self._mode(ctrl, now, L)
+        assert ctrl._mode is EMSMode.GRID_CHARGING                 # immediate
+        later = now + timedelta(seconds=30)
+        ctrl._battery_plan.steps[0] = _step(Action.AUTO, later)
+        ctrl._battery_plan.computed_at = later
+        assert self._mode(ctrl, later, L) is EMSMode.GRID_CHARGING  # dwell again
+
+    def test_dwell_window_expires(self, make_config, fake_ws):
+        now = datetime(2026, 11, 16, 6, 10, 0, tzinfo=TZ)
+        ctrl = self._ctrl_in(make_config, fake_ws, EMSMode.GRID_CHARGING, Action.AUTO, now)
+        ctrl._track_price_change(now - timedelta(minutes=10), L)
+        ctrl._track_price_change(now - timedelta(minutes=9), S)
+        assert not ctrl._price_changed_recently(now)

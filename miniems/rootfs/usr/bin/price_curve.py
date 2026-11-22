@@ -69,6 +69,13 @@ class PriceCurve:
     def is_dated(self) -> bool:
         return bool(self._dated)
 
+    def fingerprint(self) -> tuple:
+        """Hashable identity of the calendar: equal exactly when every window
+        and every dated slot is equal. Lets a caller notice that a market
+        tariff published new prices (tomorrow's day-ahead list) without
+        comparing whole attribute lists itself."""
+        return (self.source, tuple(self._windows), tuple(self._dated))
+
     # ------------------------------------------------------------------
 
     @classmethod

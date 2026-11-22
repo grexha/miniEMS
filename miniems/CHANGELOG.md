@@ -1,5 +1,24 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## 4.2.5
+
+### Fixed
+
+- **Tagesplan reagierte erst bis zu 20 Minuten nach einem Tarifwechsel.** Der
+  Preissensor schaltet bis zu einer Minute nach der Tarifgrenze um. Die
+  Neuberechnung an der Slotgrenze sah für den ersten Slot deshalb noch den
+  alten Preis, die nächste kam erst 15 Minuten später, danach wartete der
+  Moduswechsel noch die Haltezeit (300 s) ab. Am 22.11. um 06:00 blieb der Akku
+  so bis 06:20 auf Halten, der Wechselrichter lud nach seinem eigenen Zeitplan
+  ohnehin nicht mehr, und das Haus bezog ~0,6 kWh zu 34,4 ct aus dem Netz.
+  - Der Plan wird sofort neu berechnet, wenn sich der aktuelle Preis oder der
+    Tarifkalender ändert. Bei Börsentarifen greifen so auch die Preise für
+    morgen, sobald sie veröffentlicht sind.
+  - Der erste Moduswechsel des Plans innerhalb der Haltezeit nach einer
+    Preisänderung wird sofort übernommen. Weitere Wechsel in diesem Zeitraum
+    warten die Haltezeit wie bisher ab, damit PV-Überschuss an der Schwelle
+    den Modus nicht in jedem Tick umschaltet.
+
 ## 4.2.4
 
 ### Fixed
