@@ -64,7 +64,8 @@ class TestLoadConfig:
     def test_fresh_install_uses_defaults(self, _isolated_files):
         cfg = load_config()
         assert cfg.pv_power_entity == Config().pv_power_entity
-        assert cfg.battery_min_soc == 15
+        assert cfg.battery_min_soc == 10
+        assert cfg.battery_max_soc == 100
 
     def test_writes_config_file_on_load(self, _isolated_files):
         config_file, _ = _isolated_files
@@ -124,7 +125,7 @@ class TestLoadConfig:
         config_file, _ = _isolated_files
         config_file.write_text("{not valid json")
         cfg = load_config()
-        assert cfg.battery_min_soc == 15   # default, no crash
+        assert cfg.battery_min_soc == 10   # default, no crash
 
     def test_fresh_install_enables_device_detection(self, _isolated_files):
         """No config.json at all yet -> migration.py's v19->v20 step sees

@@ -125,6 +125,9 @@ def migrate(data: dict, *, is_fresh: bool = False) -> dict:
     if version < 26:
         data = _v25_to_v26(data)
 
+    if version < 27:
+        data = _v26_to_v27(data)
+
     data["_version"] = CURRENT_VERSION
     return data
 
@@ -514,6 +517,23 @@ def _v25_to_v26(data: dict) -> dict:
         if key not in data:
             data[key] = default
             _LOGGER.info("Migration v25→v26: set %s = %r", key, default)
+    return data
+
+
+def _v26_to_v27(data: dict) -> dict:
+    """v26 → v27: battery_max_soc 95 → 100 (LiFePO4 manufacturer guidance).
+
+    Only an untouched old default is raised; an explicitly chosen value stays.
+    A regular full charge lets an LFP BMS recalibrate its SoC – without it the
+    reading drifts on the flat voltage curve and "10 %" may really be less.
+
+    battery_min_soc is deliberately *not* migrated: the new default (10 %)
+    suits LFP, but an existing install may run another chemistry, and a lower
+    discharge floor is not something to change behind its owner's back.
+    """
+    if data.get("battery_max_soc") == 95:
+        data["battery_max_soc"] = 100
+        _LOGGER.info("Migration v26→v27: battery_max_soc was the old default 95 – raised to 100")
     return data
 
 

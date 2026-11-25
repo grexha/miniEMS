@@ -275,3 +275,20 @@ def test_v24_to_v25_minimum_charge_defaults():
     assert result["hw_min_charge_running_k"] == 1.5
     assert result["hw_compressor_entity"] == "sensor.eu08l_hp1_compressor_unit_rating"
     assert _v24_to_v25({"hw_min_charge_k": 5.0})["hw_min_charge_k"] == 5.0
+
+
+def test_v26_to_v27_raises_untouched_max_soc():
+    from migration import _v26_to_v27
+    assert _v26_to_v27({"battery_max_soc": 95})["battery_max_soc"] == 100
+
+
+def test_v26_to_v27_keeps_customized_max_soc():
+    from migration import _v26_to_v27
+    assert _v26_to_v27({"battery_max_soc": 90})["battery_max_soc"] == 90
+
+
+def test_v26_to_v27_leaves_min_soc_alone():
+    """The 10 % default is for new installs; an existing floor stays put."""
+    result = migrate({"_version": 26, "battery_min_soc": 15, "battery_max_soc": 95})
+    assert result["battery_min_soc"] == 15
+    assert result["battery_max_soc"] == 100

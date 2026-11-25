@@ -53,8 +53,8 @@ All five required entities above are checked for **staleness** (`sensor_max_age_
 | Setting | Default | Description |
 |---|---|---|
 | `battery_capacity_kwh` | `10.0` | Usable battery capacity in kWh. Overridden by `battery_capacity_entity` if set. |
-| `battery_min_soc` | `15` | Minimum SoC (%). Below this, miniEMS switches to `Battery Protection` and blocks discharging. |
-| `battery_max_soc` | `95` | Maximum SoC (%). Charging stops (`Idle` mode) once reached. |
+| `battery_min_soc` | `10` | Minimum SoC (%). Below this, miniEMS switches to `Battery Protection` and blocks discharging. |
+| `battery_max_soc` | `100` | Maximum SoC (%). Charging stops (`Idle` mode) once reached. |
 
 !!! warning "Automatic safeguard"
     If `battery_min_soc ≥ battery_max_soc`, miniEMS automatically disables `battery_control_enabled` on startup and logs a warning — an inconsistent configuration can't reach the inverter unfiltered.

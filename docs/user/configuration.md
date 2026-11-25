@@ -53,8 +53,8 @@ Alle fünf oberen Pflicht-Entitäten werden auf **Veraltung** geprüft (`sensor_
 | Einstellung | Standard | Beschreibung |
 |---|---|---|
 | `battery_capacity_kwh` | `10.0` | Nutzbare Batteriekapazität in kWh. Wird durch `battery_capacity_entity` (falls gesetzt) ersetzt. |
-| `battery_min_soc` | `15` | Mindest-SoC (%). Unterhalb wechselt miniEMS in `Battery Protection` und blockiert Entladen. |
-| `battery_max_soc` | `95` | Maximaler SoC (%). Laden stoppt (Modus `Idle`), wenn erreicht. |
+| `battery_min_soc` | `10` | Mindest-SoC (%). Unterhalb wechselt miniEMS in `Battery Protection` und blockiert Entladen. |
+| `battery_max_soc` | `100` | Maximaler SoC (%). Laden stoppt (Modus `Idle`), wenn erreicht. |
 
 !!! warning "Automatische Absicherung"
     Ist `battery_min_soc ≥ battery_max_soc`, deaktiviert miniEMS beim Start automatisch `battery_control_enabled` und schreibt eine Warnung ins Log — eine unsinnige Konfiguration kann so nicht zu Fehlverhalten am Wechselrichter führen.

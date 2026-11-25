@@ -48,8 +48,12 @@ class Config:
     # ("Gelernte Ladeleistung"), which both share this field.
     battery_voltage_entity: str = "sensor.deye8k_battery_voltage"
     battery_capacity_kwh: float = 10.0
-    battery_min_soc: int = 15
-    battery_max_soc: int = 95
+    # v4.2.6: LiFePO4 manufacturer guidance (Felicity: min 10–20 %, max 100 %).
+    # A full battery also recalibrates the BMS SoC – LFP's flat voltage curve
+    # lets it drift otherwise. Existing installs keep their min (migration
+    # v26→v27 only raises an untouched 95 % max).
+    battery_min_soc: int = 10
+    battery_max_soc: int = 100
     # Authentication
     long_lived_token: str = ""
     # Octopus Energy Entities

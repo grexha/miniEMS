@@ -1,5 +1,23 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## 4.2.6
+
+### Changed
+
+- **Neue Standardwerte für die Batteriegrenzen: Min-SoC 10 %, Max-SoC 100 %**
+  (bisher 15 % / 95 %). Entspricht der Herstellerempfehlung für
+  LiFePO4-Speicher (Felicity: Min 10–20 %, Max 100 %). Die regelmäßige
+  Vollladung lässt das BMS seinen SoC neu kalibrieren; ohne sie driftet die
+  Anzeige auf der flachen LFP-Spannungskurve.
+  - Bestehende Installationen: `battery_max_soc` wird nur angehoben, wenn er
+    noch auf dem alten Standard 95 % stand. `battery_min_soc` bleibt
+    unverändert, denn eine niedrigere Entladegrenze soll niemand unbemerkt
+    bekommen, zumal bei einer anderen Zellchemie.
+  - Hinweis: Die Zeitprogramme des Deye haben eine eigene SoC-Grenze. Liegt sie
+    über `battery_min_soc`, plant miniEMS mit Energie, die der Wechselrichter
+    nicht abgibt (22.–24.11.: 2,5 kWh, der Akku stand morgens bei 20 % und das
+    Haus bezog 07–11 Uhr Netzstrom zum Standardpreis). Beide Werte gleich setzen.
+
 ## 4.2.5
 
 ### Fixed

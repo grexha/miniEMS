@@ -73,8 +73,8 @@ flowchart TD
 | # | Prüfung | Code | Standardwert |
 |---|---|---|---|
 | 1 | SoC lesbar, `battery_power_entity` nicht eingefroren | `_decide()` | `sensor_max_age_sec` = 300 s |
-| 2 | Kein Batterieschutz aktiv | `_decide()` | `battery_min_soc` = 15 % |
-| 3 | Speicher nicht voll | `_decide()` | `battery_max_soc` = 95 % |
+| 2 | Kein Batterieschutz aktiv | `_decide()` | `battery_min_soc` = 10 % |
+| 3 | Speicher nicht voll | `_decide()` | `battery_max_soc` = 100 % |
 | 4 | Kein PV-Überschuss (sonst hat PV-Laden Vorrang) | `_decide()` | `pv_surplus_threshold_w` = 200 W |
 | 5 | Preis vorhanden und nicht veraltet | `_should_grid_charge()` | `price_max_age_sec` = 21 720 s |
 | 6 | Preis unter Billig-Schwelle | `CostOptimizer.is_cheap_rate()` | `cheap_rate_threshold_eur` = 0,10 €/kWh |

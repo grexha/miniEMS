@@ -108,7 +108,7 @@ class TestOverrides:
 
     @pytest.mark.asyncio
     async def test_rank_three_in_the_decision(self, make_config, fake_ws):
-        ctrl = make_controller(make_config, fake_ws)
+        ctrl = make_controller(make_config, fake_ws, battery_max_soc=95)
         await ctrl.overrides.set("battery", "grid_charge", T0, 60)
         d = ctrl._apply_override(ModeDecision(EMSMode.IDLE, "no action"), 50.0, T0)
         assert d.mode is EMSMode.GRID_CHARGING and d.urgent
