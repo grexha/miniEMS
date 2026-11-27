@@ -696,7 +696,14 @@ class TestGridChargePowerW:
     """
 
     def _base_kwargs(self):
-        return dict(electricity_price_entity="sensor.price")
+        return dict(electricity_price_entity="sensor.price", grid_charge_stretch_enabled=True)
+
+    def test_full_current_by_default(self, make_config, fake_ws):
+        """v4.2.7: without stretching the inverter gets its maximum."""
+        now_ = datetime(2026, 8, 15, 3, 0, tzinfo=timezone.utc)
+        ctrl = make_controller(make_config, fake_ws, electricity_price_entity="sensor.price")
+        fake_ws.attributes["sensor.price"] = _OCTOPUS_TIMESLOTS
+        assert ctrl._grid_charge_power_w(4.8, now_) is None
 
     def test_none_when_no_free_capacity(self, make_config, fake_ws, now):
         ctrl = make_controller(make_config, fake_ws, **self._base_kwargs())

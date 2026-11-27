@@ -372,6 +372,12 @@ class Config:
     # A9 – day-ahead prices: tolerance band instead of equality, capacity
     # check of later windows, V1 over the whole cheap run, slot mean price.
     day_ahead_enabled: bool = False
+    # V1 – stretch the grid-charge power over the slot/window instead of
+    # requesting the full current. Off since v4.2.7: the inverter gets its
+    # maximum and the battery takes what it can (BMS limit, temperature); the
+    # plan bounds the energy, not the current. On it censors the learned
+    # charge power – a stretched tick measures the request, not the battery.
+    grid_charge_stretch_enabled: bool = False
     # A10 – the HA integration resets every actuator to its safe value when
     # the add-on has not reported for this long (minutes, 0 = off).
     failsafe_timeout_min: int = 15

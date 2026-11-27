@@ -88,6 +88,7 @@ _BOOL_FIELDS = {
     "discharge_hold_enabled", "negative_price_enabled", "price_is_spot",
     "battery_plan_enabled", "battery_learned_values_enabled", "pv_correction_enabled",
     "plan_feedback_enabled", "hw_start_cost_enabled", "day_ahead_enabled", "hw_hygiene_enabled",
+    "grid_charge_stretch_enabled",
 }
 # Dict-valued fields never have a settings.html form control (no free-text
 # input can represent a dict safely) – but /api/config's merge loop below

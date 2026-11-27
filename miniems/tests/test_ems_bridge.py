@@ -60,7 +60,7 @@ def make(make_config, fake_ws, *, enabled=True, forecaster=None, pv_kw=lambda h:
         solcast_last_fetch_entity="", battery_voltage_entity="",
         pv_forecast_scenario="estimate", grid_charge_min_margin_eur_kwh=0.02,
         # Expected kWh below were derived with these limits (pre-4.2.6 defaults).
-        battery_min_soc=15, battery_max_soc=95,
+        battery_min_soc=15, battery_max_soc=95, grid_charge_stretch_enabled=True,
     )
     fake_ws.attributes[PRICE] = _timeslots()
     fake_ws.attributes[TODAY] = {"detailedForecast": _solcast(day, pv_kw)}

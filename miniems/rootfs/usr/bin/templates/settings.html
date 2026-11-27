@@ -26,6 +26,7 @@
       'discharge_hold_enabled', 'negative_price_enabled', 'price_is_spot',
       'battery_plan_enabled', 'battery_learned_values_enabled', 'pv_correction_enabled',
       'plan_feedback_enabled', 'hw_start_cost_enabled', 'day_ahead_enabled', 'hw_hygiene_enabled',
+      'grid_charge_stretch_enabled',
       'fuse_guard_enabled', 'ev_control_enabled', 'ev_control_simulation',
       'heating_control_enabled', 'heating_control_simulation', 'heating_room_control_enabled'
     ]);
@@ -187,6 +188,7 @@
           { key: 'pv_correction_enabled',        label: 'PV forecast correction per hour of day (A7b)' },
           { key: 'plan_feedback_enabled',        label: 'Correct load/PV by plan vs. result (A7c)' },
           { key: 'day_ahead_enabled',            label: 'Day-ahead prices: band, capacity check, slot mean (A9)' },
+          { key: 'grid_charge_stretch_enabled',  label: 'Stretch grid-charge current over the slot (V1, else full current)' },
           { key: 'battery_full_charge_days',     label: 'Full charge at least every n days (0 = off, A11)' },
         ]
       },

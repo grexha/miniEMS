@@ -167,7 +167,7 @@ async def test_update_wires_stretched_grid_charge_power_to_inverter(make_config,
         make_config, fake_ws, mode_dwell_sec=0,
         cheap_rate_threshold_eur=0.5, grid_charge_dark_start_hour=21,
         grid_charge_dark_end_hour=6, battery_max_charge_current_a=100,
-        battery_max_soc=90,
+        battery_max_soc=90, grid_charge_stretch_enabled=True,
     )
     fake_ws.values.update({
         "sensor.pv": 0.0, "sensor.load": 0.0, "sensor.grid": 0.0,
@@ -589,6 +589,7 @@ async def test_update_runs_bridge_plan_and_records_hour(make_config, fake_ws):
         solcast_today_entity="sensor.st", solcast_tomorrow_entity="sensor.sm",
         solcast_last_fetch_entity="", battery_voltage_entity="",
         battery_capacity_kwh=20.0, pv_forecast_scenario="estimate",
+        grid_charge_stretch_enabled=True,
     )
     recorded = []
 

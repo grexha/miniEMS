@@ -1034,6 +1034,14 @@ class EMSController(PhaseBMixin, PhaseCMixin):
         max" instead of a guessed number.
         """
         cfg = self._cfg
+        if not cfg.grid_charge_stretch_enabled:
+            # v4.2.7: full current. The battery takes what it can – its BMS
+            # limit moves with temperature and SoC, and a stretched request
+            # would cap it below that. The plan bounds the energy instead
+            # (recompute once the slot's target level is reached, see
+            # _plan_target_reached), and every tick measures the battery,
+            # not the request, so the learned charge power can rise again.
+            return None
         if bat_kwh_free is None or bat_kwh_free <= 0:
             return None
 
@@ -1351,7 +1359,8 @@ class EMSController(PhaseBMixin, PhaseCMixin):
         if (plan is not None and plan.first is not None and now < plan.first.end
                 and (now - plan.computed_at).total_seconds() < self._PLAN_RECOMPUTE_SEC
                 and not self._price_differs(price, self._battery_plan_price)
-                and curve_key == self._battery_plan_curve_key):
+                and curve_key == self._battery_plan_curve_key
+                and not self._plan_target_reached(bat_kwh_use)):
             return
         self._battery_plan = None
         self._battery_plan_price = price
@@ -1388,6 +1397,22 @@ class EMSController(PhaseBMixin, PhaseCMixin):
         self._battery_plan_status = ("in control" if cfg.battery_plan_enabled else "shadow")
         if self._battery_plan.reason:
             self._battery_plan_status = self._battery_plan.reason
+
+    def _plan_target_reached(self, bat_kwh_use: float | None) -> bool:
+        """Has a charging slot already stored what the plan meant it to by
+        its end?
+
+        With full current (v4.2.7) the battery can take a slot's energy in a
+        fraction of the slot. Without this the plan would only notice at the
+        next 15-min recompute and keep buying meanwhile. A fresh plan from
+        the higher level decides what is still worth buying.
+        """
+        plan = self._battery_plan
+        step = plan.first if plan is not None else None
+        if (step is None or bat_kwh_use is None or step.action is not Action.CHARGE
+                or step.grid_charge_kwh <= PLAN_STOP_BELOW_KWH):
+            return False
+        return bat_kwh_use >= step.soc_kwh_end - 1e-6
 
     @staticmethod
     def _price_differs(a: float | None, b: float | None) -> bool:

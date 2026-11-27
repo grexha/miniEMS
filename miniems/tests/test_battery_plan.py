@@ -129,6 +129,9 @@ class TestController:
         ctrl, now = self._ctrl(make_config, fake_ws, Action.CHARGE, kwh=2.0)
         d = ctrl._decide(pv_w=0, load_w=500, bat_soc=40.0, price=L, bat_kwh_free=5.0, now=now)
         assert d.mode is EMSMode.GRID_CHARGING and d.reason.startswith("battery plan")
+        # v4.2.7 default: full current, the plan bounds the energy.
+        assert ctrl._grid_charge_power_w(5.0, now) is None
+        ctrl._cfg.grid_charge_stretch_enabled = True
         # v4.2.4: the slot's energy over the whole slot (30 min), not over the
         # time left – and the same value later in the slot.
         assert ctrl._grid_charge_power_w(5.0, now) == pytest.approx(2.0 / 0.5 * 1000)
@@ -277,6 +280,37 @@ class TestPriceTriggers:
         ctrl._battery_plan.steps[0] = _step(Action.AUTO, later)
         ctrl._battery_plan.computed_at = later
         assert self._mode(ctrl, later, L) is EMSMode.GRID_CHARGING  # dwell again
+
+    @pytest.mark.asyncio
+    async def test_slot_target_reached_recomputes_plan(self, make_config, fake_ws):
+        """Full current fills a slot's energy early; the plan must notice now,
+        not at the next 15-min recompute."""
+        ctrl = _planning_ctrl(make_config, fake_ws)
+        t0 = datetime(2026, 11, 16, 13, 0, 20, tzinfo=TZ)
+        await ctrl._update_battery_plan(t0, L, None, bat_kwh_use=2.0, bat_kwh_free=6.0)
+        plan = ctrl._battery_plan
+        step = plan.first
+        assert step.action is Action.CHARGE
+        t1 = t0 + timedelta(minutes=5)
+        # Still below the slot's target level → plan kept.
+        await ctrl._update_battery_plan(t1, L, None, bat_kwh_use=step.soc_kwh_end - 0.5,
+                                        bat_kwh_free=6.0)
+        assert ctrl._battery_plan is plan
+        # Target level reached early → fresh plan.
+        await ctrl._update_battery_plan(t1, L, None, bat_kwh_use=step.soc_kwh_end,
+                                        bat_kwh_free=8.0 - step.soc_kwh_end)
+        assert ctrl._battery_plan is not plan
+
+    def test_target_reached_only_for_charge_steps(self, make_config, fake_ws):
+        now = datetime(2026, 11, 16, 3, 0, tzinfo=TZ)
+        ctrl = make_controller(make_config, fake_ws, battery_plan_enabled=True)
+        ctrl._battery_plan = BatteryPlan(computed_at=now, style="careful",
+                                         steps=[_step(Action.HOLD, now)])
+        assert not ctrl._plan_target_reached(10.0)
+        ctrl._battery_plan.steps[0] = _step(Action.CHARGE, now, kwh=2.0)   # soc_kwh_end 4.0
+        assert not ctrl._plan_target_reached(3.9)
+        assert ctrl._plan_target_reached(4.0)
+        assert not ctrl._plan_target_reached(None)
 
     def test_dwell_window_expires(self, make_config, fake_ws):
         now = datetime(2026, 11, 16, 6, 10, 0, tzinfo=TZ)

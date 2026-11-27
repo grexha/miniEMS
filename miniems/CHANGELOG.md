@@ -1,5 +1,22 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## 4.2.7
+
+### Changed
+
+- **Netzladen mit vollem Strom statt gestreckter Leistung.** Bisher teilte
+  miniEMS die geplante Energie eines Slots durch die Slotlänge und schrieb den
+  daraus folgenden Strom (z. B. 68 A statt 185 A). Das bremste den Akku
+  künstlich: Sein BMS-Grenzwert schwankt mit Temperatur und SoC, und ein
+  gestreckter Takt misst nur die Anforderung, so dass die gelernte
+  Ladeleistung kaum Messwerte bekam.
+  - Jetzt erhält der Wechselrichter beim Netzladen immer seinen Maximalstrom
+    (`battery_max_grid_charge_current_a`); der Akku nimmt, was er kann.
+  - Der Tagesplan rechnet weiter mit der gelernten Ladeleistung und begrenzt
+    die Energie: Erreicht der Akku den Zielstand des Slots früher, wird der
+    Plan sofort neu berechnet statt erst nach 15 Minuten.
+  - Das alte Verhalten bleibt als Option `grid_charge_stretch_enabled`.
+
 ## 4.2.6
 
 ### Changed
